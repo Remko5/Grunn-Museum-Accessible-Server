@@ -1,5 +1,3 @@
-from tokenize import Double
-from typing_extensions import Required
 from sqlalchemy import create_engine, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Integer, Column, String, Float, Text

@@ -1,8 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import request, jsonify
 from database import Route, Part, Point, engine
 from sqlalchemy.orm import sessionmaker, joinedload
-from flask_marshmallow import Marshmallow
-from marshmallow import fields
 from model import route_schema, routes_schema, app
 from werkzeug.utils import secure_filename
 import os
