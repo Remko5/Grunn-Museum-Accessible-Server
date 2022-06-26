@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker, relationship
 
 base=declarative_base()
 #engine = create_engine('sqlite:///groninger_museum.db')
-engine = create_engine('postgres://cbwfvybmoyqbeo:3a3785fdae3a3445c2116b1c4bf6501a9fcd9528c9b80aaaa4aca7643f0d648f@ec2-54-170-90-26.eu-west-1.compute.amazonaws.com:5432/d5hja7i8d6c0t8')
+engine = create_engine('postgresql://nrolqkjuucybri:35e497f5b1f9f8fcaf38d97f19f7b7ef80414e9950ab8da70ef7f7e016b6bd4a@ec2-34-247-172-149.eu-west-1.compute.amazonaws.com:5432/df2rt899hes9bj')
 class Route(base):
     
     __tablename__ = 'route'
@@ -13,11 +13,13 @@ class Route(base):
     id = Column(Integer,primary_key=True)
     name = Column(String(45), nullable=False, unique=True)
     description = Column(Text)
+    image = Column(String)
     parts = relationship("Part", cascade="all, delete")
 
-    def __init__(self, name, description=None):
+    def __init__(self, name, description=None, image=None):
         self.name = name
         self.description = description
+        self.image = image
 
 class Part(base):
     
@@ -67,7 +69,7 @@ if __name__=='__main__':
     part1 = Part(routeId=1, startId=1, endId=2, maxDistance=200)
     part2 = Part(routeId=1, startId=3, endId=4, maxDistance=100)
     part3 = Part(routeId=1, startId=5, endId=6, maxDistance=300)
-    route1 = Route('route1', "desc1")
+    route1 = Route('route1', "desc1", "https://groninger-museum-api.herokuapp.com/static/image/1.png")
     route2 = Route('route2', "desc2")
     route3 = Route('route3', "desc3")
     sessionobj.add_all([route1,route2,route3,part1,part2,part3,point1,point2,point3,point4,point5,point6])

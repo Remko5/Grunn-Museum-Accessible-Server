@@ -1,14 +1,18 @@
 from flask import Flask
 from flask_marshmallow import Marshmallow
 from marshmallow import fields
+from flask_cors import CORS
 import os
 
 app = Flask(__name__)
 app.config["BASE_FOLDER"] = os.path.abspath(os.path.dirname(__file__))
-app.config["UPLOAD_FOLDER"] = os.path.join(app.config["BASE_FOLDER"], "static/audio")
-app.config["ALLOWED_EXTENTIONS"] = ["wav", "mp3"]
+app.config["AUDIO_FOLDER"] = os.path.join(app.config["BASE_FOLDER"], "static/audio")
+app.config["IMAGE_FOLDER"] = os.path.join(app.config["BASE_FOLDER"], "static/image")
+app.config["AUDIO_EXTENTIONS"] = ["wav", "mp3"]
+app.config["IMAGE_EXTENTIONS"] = ["jpg", "jpeg", "gif", "png"]
 
 ma = Marshmallow(app)
+CORS(app)
 
 class PointSchema(ma.Schema):
         class Meta:
@@ -22,6 +26,7 @@ class PartSchema(ma.Schema):
 class RouteSchema(ma.Schema):
         name = fields.String()
         description = fields.String()
+        image = fields.String()
         parts = fields.List(fields.Nested(PartSchema))
 
 route_schema = RouteSchema()
