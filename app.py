@@ -216,8 +216,8 @@ def update():
         update_route.description = route.get('new_description')
     
     file_amount = request.files.getlist('file')
-    if file_amount is not None:
-        if len(file_amount) > 0 and len(file_amount) < 2:
+    if file_amount is not None and len(file_amount) > 0:
+        if len(file_amount) < 2:
             # check if file is image
             if not image_file(secure_filename(request.files['file'].filename)):
                 resp = jsonify({'message' : 'Allowed file types are ' + str(app.config['IMAGE_EXTENTIONS'])})
@@ -345,4 +345,4 @@ def image_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config["IMAGE_EXTENTIONS"]
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=80, debug=True)
