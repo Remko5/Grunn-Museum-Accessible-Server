@@ -4,8 +4,8 @@ from sqlalchemy import Integer, Column, String, Float, Text
 from sqlalchemy.orm import sessionmaker, relationship
 
 base=declarative_base()
-#engine = create_engine('sqlite:///groninger_museum.db')
-engine = create_engine('postgresql://nrolqkjuucybri:35e497f5b1f9f8fcaf38d97f19f7b7ef80414e9950ab8da70ef7f7e016b6bd4a@ec2-34-247-172-149.eu-west-1.compute.amazonaws.com:5432/df2rt899hes9bj')
+engine = create_engine('sqlite:///groninger_museum.db')
+#engine = create_engine('postgresql://nrolqkjuucybri:35e497f5b1f9f8fcaf38d97f19f7b7ef80414e9950ab8da70ef7f7e016b6bd4a@ec2-34-247-172-149.eu-west-1.compute.amazonaws.com:5432/df2rt899hes9bj')
 class Route(base):
     
     __tablename__ = 'route'

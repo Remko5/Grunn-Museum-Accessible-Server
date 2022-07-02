@@ -22,10 +22,17 @@ def all_routes():
 @app.route('/one', methods=['POST'])
 def one_route():
     name = request.form.get('name')
-    if name is None:
-        resp = jsonify({'message' : 'No name given'})
+    chars = app.config["NOT_ALLOWED_CHARS"]
+    if len(name) == 0 or name is None:
+        resp = jsonify({'message' : 'No route name given'})
         resp.status_code = 400
         return resp
+
+    for char in name:
+        if char in chars:
+            resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+            resp.status_code = 400
+            return resp
 
     Session = sessionmaker(bind=engine)
     sessionobj = Session()
@@ -42,160 +49,248 @@ def one_route():
 
 @app.route('/create', methods=['POST'])
 def create_route():
-    # check if request is json
-    route = request.form
-    
-    # open database session
-    Session = sessionmaker(bind=engine)
-    sessionobj = Session()
-    # check if name is already used
-    in_use = sessionobj.query(Route).filter(Route.name == route.get('name')).one_or_none()
-    if in_use is not None:
-        resp = jsonify({'message' : 'Route name already in use'})
-        resp.status_code = 400
-        return resp
-        
-    # don't flush prematurely
-    description = route.get('description')
-    image = None
-    files = request.files.getlist('file')    
-    # check if a image was given
-    if len(files) > 0:
-        for file in files:
-            # check if file is image
-            if image_file(secure_filename(file.filename)):
-                filepath = upload_file(file)
-                image = filepath
-
-            if image == "no-upload":
-                resp = jsonify({'message' : 'No file selected for uploading'})
-                resp.status_code = 400
-                return resp
-
-    # else:
-    #     resp = jsonify({'message' : "No file in the request"})
-    #     resp.status_code = 400
-    #     return resp
-
-    # create new route
-    new_route = Route(name=route['name'], description=description, image=image)
-    sessionobj.add(new_route)
-    parts = json.loads(route.get('parts'))
-    # parts for new route
-    for part in parts:
-
-        # check if all required fields exist
-        try:
-            start = part['start']
-            end = part['end']
-            sx = start['x']
-            sy = start['y']
-            ex = end['x']
-            ey = end['y']
-            maxDistance = part['maxDistance']
-        except:
-            resp = jsonify({'message' : 'Missing required fields'})
+    try:
+        route = request.form
+        name = route.get('name')
+        chars = app.config["NOT_ALLOWED_CHARS"]
+        if len(name) == 0 or name is None:
+            resp = jsonify({'message' : 'No route name given'})
             resp.status_code = 400
             return resp
 
-        soundRange = None
-        soundFile = None
+        for char in name:
+            if char in chars:
+                resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+                resp.status_code = 400
+                return resp
+
+        # open database session
+        Session = sessionmaker(bind=engine, autoflush=False)
+        sessionobj = Session()
+        # check if name is already used
+        in_use = sessionobj.query(Route).filter(Route.name == name).one_or_none()
+        if in_use is not None:
+            resp = jsonify({'message' : 'Route name already in use'})
+            resp.status_code = 400
+            return resp
+            
+        description = route.get('description')
+        if description is not None and len(description) != 0:
+            for char in description:
+                if char in chars:
+                    resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+                    resp.status_code = 400
+                    return resp
+
+        image = None
+        files = request.files.getlist('file')
+        # list to hold current uploaded files to revert if an error occurs
+        current_uploaded_files = []
+        # check if a image was given
+        if len(files) > 0:
+            for file in files:
+                # check if file is image
+                if image_file(secure_filename(file.filename)):
+                    filepath = upload_file(file)
+                    image = filepath
+                    current_uploaded_files.append(image)
+
+                if image == "no-upload":
+                    delete_current_uploaded_files(current_uploaded_files)
+                    resp = jsonify({'message' : 'No file selected for uploading'})
+                    resp.status_code = 400
+                    return resp
+
+        # else:
+        #     resp = jsonify({'message' : "No file in the request"})
+        #     resp.status_code = 400
+        #     return resp
+
+        # create new route
+        new_route = Route(name=name, description=description, image=image)
+        sessionobj.add(new_route)
+        sessionobj.flush()
+        try:
+            parts = json.loads(route.get('parts'))
+        except:
+            delete_current_uploaded_files(current_uploaded_files)
+            resp = jsonify({'message' : 'JSON format expected for parts'})
+            resp.status_code = 400
+            return resp
         
-        # check if soundRange and soundFile were given for start
-        if "soundRange" in start:
-            soundRange = start['soundRange']
-        if "soundFile" in start:
-            # check if audio was given
-            if len(files) > 0:
-                for file in files:
-                    if secure_filename(file.filename) == secure_filename(start['soundFile']):
-                        # check if file is audio
-                        if audio_file(secure_filename(file.filename)):
-                            filepath = upload_file(file)
-                            soundFile = filepath
-                            
-                        if soundFile == "no-upload":
-                            resp = jsonify({'message' : 'No file selected for uploading'})
-                            resp.status_code = 400
-                            return resp
+        # parts for new route
+        for part in parts:
 
-            # else:
-            #     resp = jsonify({'message' : "No file in the request"})
-            #     resp.status_code = 400
-            #     return resp
-        
-        # create start
-        new_start = Point(x=sx, y=sy, soundFile=soundFile, soundRange=soundRange)
-        sessionobj.add(new_start)
-        
-        # get new start id
-        startId = sessionobj.query(Point).order_by(Point.id.desc()).first().id
+            # check if all required fields exist
+            try:
+                start = part['start']
+                end = part['end']
+                try:
+                    sx = float(start['x'])
+                    sy = float(start['y'])
+                    ex = float(end['x'])
+                    ey = float(end['y'])
+                except:
+                    delete_current_uploaded_files(current_uploaded_files)
+                    resp = jsonify({'message' : 'x and y in start and end need to be a number (float)'})
+                    resp.status_code = 400
+                    return resp
+                try:
+                    maxDistance = int(part['maxDistance'])
+                except:
+                    delete_current_uploaded_files(current_uploaded_files)
+                    resp = jsonify({'message' : 'maxDistance needs to be a number (int)'})
+                    resp.status_code = 400
+                    return resp
+            except:
+                delete_current_uploaded_files(current_uploaded_files)
+                resp = jsonify({'message' : 'Missing required fields'})
+                resp.status_code = 400
+                return resp
 
-        soundFile = None
-        soundRange = None
-        
-        # check if soundRange and soundFile were given for end
-        if "soundRange" in end:
-            soundRange = end['soundRange']
-        if "soundFile" in end:
-            # check if audio was given
-            if len(files) > 0:
-                for file in files:
-                    if secure_filename(file.filename) == secure_filename(end['soundFile']):
-                        # check if file is audio
-                        if audio_file(secure_filename(file.filename)):
-                            filepath = upload_file(file)
-                            soundFile = filepath
-                            
-                        if soundFile == "no-upload":
-                            resp = jsonify({'message' : 'No file selected for uploading'})
-                            resp.status_code = 400
-                            return resp
+            soundRange = None
+            soundFile = None
+            
+            # check if soundRange and soundFile were given for start
+            if "soundRange" in start:
+                try:
+                    soundRange = int(start['soundRange'])
+                except:
+                    delete_current_uploaded_files(current_uploaded_files)
+                    resp = jsonify({'message' : 'soundRange needs to be a number (int)'})
+                    resp.status_code = 400
+                    return resp
 
-            # else:
-            #     resp = jsonify({'message' : "No file in the request"})
-            #     resp.status_code = 400
-            #     return resp
-        
-        # create end
-        new_end = Point(x=ex, y=ey, soundFile=soundFile, soundRange=soundRange)
-        sessionobj.add(new_end)
+            if "soundFile" in start:
+                # check if audio was given
+                if len(files) > 0:
+                    for file in files:
+                        if secure_filename(file.filename) == secure_filename(start['soundFile']):
+                            # check if file is audio
+                            if audio_file(secure_filename(file.filename)):
+                                filepath = upload_file(file)
+                                soundFile = filepath
+                                current_uploaded_files.append(soundFile)
+                                
+                            if soundFile == "no-upload":
+                                delete_current_uploaded_files(current_uploaded_files)
+                                resp = jsonify({'message' : 'No file selected for uploading'})
+                                resp.status_code = 400
+                                return resp
 
-        # get new end id
-        endId = sessionobj.query(Point).order_by(Point.id.desc()).first().id
-        
-        # get new route id
-        routeId = sessionobj.query(Route).order_by(Route.id.desc()).first().id
+                # else:
+                #     resp = jsonify({'message' : "No file in the request"})
+                #     resp.status_code = 400
+                #     return resp
+            
+            # create start
+            new_start = Point(x=sx, y=sy, soundFile=soundFile, soundRange=soundRange)
+            sessionobj.add(new_start)
+            sessionobj.flush()
+            # get new start id
+            startId = sessionobj.query(Point).order_by(Point.id.desc()).first().id
 
-        # create new part
-        new_part = Part(routeId=routeId, startId=startId, endId=endId, maxDistance=maxDistance)
-        sessionobj.add(new_part)
+            soundFile = None
+            soundRange = None
+            
+            # check if soundRange and soundFile were given for end
+            if "soundRange" in end:
+                try:
+                    soundRange = int(end['soundRange'])
+                except:
+                    delete_current_uploaded_files(current_uploaded_files)
+                    resp = jsonify({'message' : 'soundRange needs to be a number (int)'})
+                    resp.status_code = 400
+                    return resp
 
-    # get new created route
-    new_route = sessionobj.query(Route).order_by(Route.id.desc()).first()
+            if "soundFile" in end:
+                # check if audio was given
+                if len(files) > 0:
+                    for file in files:
+                        if secure_filename(file.filename) == secure_filename(end['soundFile']):
+                            # check if file is audio
+                            if audio_file(secure_filename(file.filename)):
+                                filepath = upload_file(file)
+                                soundFile = filepath
+                                current_uploaded_files.append(soundFile)
 
-    # save all to database
-    sessionobj.commit()
-    #return new route
-    resp = route_schema.jsonify(new_route)
-    resp.status_code = 201
-    return resp
+                            if soundFile == "no-upload":
+                                delete_current_uploaded_files(current_uploaded_files)
+                                resp = jsonify({'message' : 'No file selected for uploading'})
+                                resp.status_code = 400
+                                return resp
+
+                # else:
+                #     resp = jsonify({'message' : "No file in the request"})
+                #     resp.status_code = 400
+                #     return resp
+            
+            # create end
+            new_end = Point(x=ex, y=ey, soundFile=soundFile, soundRange=soundRange)
+            sessionobj.add(new_end)
+            sessionobj.flush()
+            # get new end id
+            endId = sessionobj.query(Point).order_by(Point.id.desc()).first().id
+            
+            # get new route id
+            routeId = sessionobj.query(Route).order_by(Route.id.desc()).first().id
+
+            # create new part
+            new_part = Part(routeId=routeId, startId=startId, endId=endId, maxDistance=maxDistance)
+            sessionobj.add(new_part)
+            sessionobj.flush()
+        # get new created route
+        new_route = sessionobj.query(Route).order_by(Route.id.desc()).first()
+
+        # save all to database
+        sessionobj.commit()
+        #return new route
+        resp = route_schema.jsonify(new_route)
+        resp.status_code = 201
+        return resp
+    except:
+        resp = jsonify({'message' : "Route name already in use"})
+        resp.status_code = 400
+        return resp
     
 @app.route('/update', methods=['POST'])
 def update():
     route = request.form
-    
+    name = route.get('name')
+    new_name = route.get('new_name')
+    new_description = route.get('new_description')
+    chars = app.config["NOT_ALLOWED_CHARS"]
     # check if the old name was given to get the record
-    if route.get('name') is None:
-        resp = jsonify({'message' : 'No name was given'})        
+    if name is None or len(name) == 0:
+        resp = jsonify({'message' : 'No route name given'})
         resp.status_code = 400
         return resp
-
+    
     # check if something is given to update the record
-    if route.get('new_name') is None and route.get('new_description') is None and len(request.files) == 0:
+    if new_name is None and new_description is None and len(request.files) == 0:
         resp = jsonify({'message' : 'Nothing to update'})
         resp.status_code = 200
         return resp
+
+    for char in name:
+        if char in chars:
+            resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+            resp.status_code = 400
+            return resp
+    
+    if new_name is not None and len(new_name) != 0:
+        for char in new_name:
+            if char in chars:
+                resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+                resp.status_code = 400
+                return resp
+    
+    if new_description is not None and len(new_description) != 0:
+        for char in new_description:
+            if char in chars:
+                resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+                resp.status_code = 400
+                return resp
 
     Session = sessionmaker(bind=engine)
     sessionobj = Session()
@@ -209,11 +304,14 @@ def update():
         return resp
     
     # update the name and or description and or image
-    if route.get('new_name') is not None:
-        update_route.name = route.get('new_name')
+    if new_name is not None:
+        update_route.name = new_name
     
-    if route.get('new_description') is not None:
-        update_route.description = route.get('new_description')
+    if new_description is not None:
+        update_route.description = new_description
+    
+    # list to hold current uploaded files to revert if an error occurs
+    current_uploaded_files = []
     
     file_amount = request.files.getlist('file')
     if file_amount is not None and len(file_amount) > 0:
@@ -225,6 +323,7 @@ def update():
                 return resp
 
             file = upload_file(request.files['file'])
+            current_uploaded_files.append(file)
             
             if file == "no-upload":
                 resp = jsonify({'message' : 'No file selected for uploading'})
@@ -235,12 +334,6 @@ def update():
             resp.status_code = 400
             return resp
         
-        # remove old image
-        try:
-            os.remove(os.path.join(app.config['IMAGE_FOLDER'], update_route.image.rsplit('/static/image/', 1)[1]))
-        except:
-            pass
-        
         # update image link
         update_route.image = file
 
@@ -248,10 +341,16 @@ def update():
     try:
         sessionobj.commit()
     except:
+        delete_current_uploaded_files(current_uploaded_files)
         resp = jsonify({'message' : 'Could not update route'})
         resp.status_code = 400
         return resp
     
+    # remove old image
+    try:
+        os.remove(os.path.join(app.config['IMAGE_FOLDER'], update_route.image.rsplit('/static/image/', 1)[1]))
+    except:
+        pass
     # return updated route
     resp = route_schema.jsonify(update_route)
     resp.status_code = 200
@@ -260,36 +359,36 @@ def update():
 @app.route('/delete', methods=['POST'])
 def delete():
     route = request.form
+    name = route.get('name')
+    chars = app.config["NOT_ALLOWED_CHARS"]
     
     # check if name is given
-    if route.get('name') is not None:
+    if name is not None and len(name) > 0:
+        for char in name:
+            if char in chars:
+                resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+                resp.status_code = 400
+                return resp
 
         # try to get route and delete it
         try:
             Session = sessionmaker(bind=engine)
             sessionobj = Session()            
-            delete_route = sessionobj.query(Route).options(joinedload(Route.parts).subqueryload(Part.start), joinedload(Route.parts).subqueryload(Part.end)).filter(Route.name == route.get('name')).one()
-
-            # delete route image
-            try:
-                os.remove(os.path.join(app.config['IMAGE_FOLDER'], delete_route.image.rsplit('/static/image/', 1)[1]))
-            except:
-                pass
+            delete_route = sessionobj.query(Route).options(joinedload(Route.parts).subqueryload(Part.start), joinedload(Route.parts).subqueryload(Part.end)).filter(Route.name == name).one()
             
-            # delete all audio files for this route
+            # get all files to delete
+            delete_files = []
+            if delete_route.image is not None:
+                delete_files.append(delete_route.image)
             for x in delete_route.parts:
                 if x.start.soundFile is not None:
-                    try:
-                       os.remove(os.path.join(app.config['AUDIO_FOLDER'], x.start.soundFile))
-                    except:
-                        pass
+                    delete_files.append(x.start.soundFile)
                 if x.end.soundFile is not None:
-                    try:
-                      os.remove(os.path.join(app.config['AUDIO_FOLDER'], x.end.soundFile))
-                    except:
-                        pass
+                    delete_files.append(x.end.soundFile)
+
             sessionobj.delete(delete_route)
             sessionobj.commit()
+            delete_current_uploaded_files(delete_files)
             resp = jsonify({'message' : 'Successfuly deleted route'})
             resp.status_code = 410
             return resp
@@ -344,5 +443,20 @@ def audio_file(filename):
 def image_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config["IMAGE_EXTENTIONS"]
 
+def delete_current_uploaded_files(temp):
+    if len(temp) > 0:
+        for x in temp:
+            if audio_file(x):
+                try:
+                    os.remove(os.path.join(app.config['AUDIO_FOLDER'], x.rsplit('/static/audio/', 1)[1]))
+                except:
+                    pass
+            elif image_file(x):
+                try:
+                    os.remove(os.path.join(app.config['IMAGE_FOLDER'], x.rsplit('/static/image/', 1)[1]))
+                except:
+                    pass
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80, debug=True)
+    #app.run(host='0.0.0.0', port=80, debug=True)
+    app.run(debug=True)
