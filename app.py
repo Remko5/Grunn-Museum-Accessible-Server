@@ -23,7 +23,7 @@ def all_routes():
 def one_route():
     name = request.form.get('name')
     chars = app.config["NOT_ALLOWED_CHARS"]
-    if len(name) == 0 or name is None:
+    if name is None or len(name) == 0:
         resp = jsonify({'message' : 'No route name given'})
         resp.status_code = 400
         return resp
@@ -53,7 +53,7 @@ def create_route():
         route = request.form
         name = route.get('name')
         chars = app.config["NOT_ALLOWED_CHARS"]
-        if len(name) == 0 or name is None:
+        if name is None or len(name) == 0:
             resp = jsonify({'message' : 'No route name given'})
             resp.status_code = 400
             return resp
