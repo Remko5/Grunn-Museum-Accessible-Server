@@ -86,20 +86,25 @@ def create_route():
         files = request.files.getlist('file')
         # list to hold current uploaded files to revert if an error occurs
         current_uploaded_files = []
+        # list with already uploaded files this request
+        already_uploaded_files = []
         # check if a image was given
         if len(files) > 0:
             for file in files:
-                # check if file is image
-                if image_file(secure_filename(file.filename)):
-                    filepath = upload_file(file)
-                    image = filepath
-                    current_uploaded_files.append(image)
+                    # check if file is image
+                    if image_file(secure_filename(file.filename)):
+                        filepath = upload_file(file)
+                        image = filepath
+                        current_uploaded_files.append(image)
+                        already_uploaded_files.append(file.filename)
 
-                if image == "no-upload":
-                    delete_current_uploaded_files(current_uploaded_files)
-                    resp = jsonify({'message' : 'No file selected for uploading'})
-                    resp.status_code = 400
-                    return resp
+                        if image == "no-upload":
+                            delete_current_uploaded_files(current_uploaded_files)
+                            resp = jsonify({'message' : 'No file selected for uploading'})
+                            resp.status_code = 400
+                            return resp
+                            
+                        break
 
         # else:
         #     resp = jsonify({'message' : "No file in the request"})
@@ -165,19 +170,27 @@ def create_route():
                 # check if audio was given
                 if len(files) > 0:
                     for file in files:
-                        if secure_filename(file.filename) == secure_filename(start['soundFile']):
-                            # check if file is audio
-                            if audio_file(secure_filename(file.filename)):
-                                filepath = upload_file(file)
-                                soundFile = filepath
-                                current_uploaded_files.append(soundFile)
-                                
-                            if soundFile == "no-upload":
-                                delete_current_uploaded_files(current_uploaded_files)
-                                resp = jsonify({'message' : 'No file selected for uploading'})
-                                resp.status_code = 400
-                                return resp
+                        if secure_filename(file.filename) not in already_uploaded_files:
+                            try:
+                                file_name = start['soundFile'].rsplit("/", 1)[1]
+                            except:
+                                file_name = start['soundFile'].rsplit("/", 1)[0]
+                            if secure_filename(file.filename) == secure_filename(file_name):
+                                # check if file is audio
+                                if audio_file(secure_filename(file.filename)):
+                                    filepath = upload_file(file)
+                                    soundFile = filepath
+                                    current_uploaded_files.append(soundFile)
+                                    already_uploaded_files.append(secure_filename(file.filename))
 
+                                    if soundFile == "no-upload":
+                                        delete_current_uploaded_files(current_uploaded_files)
+                                        resp = jsonify({'message' : 'No file selected for uploading'})
+                                        resp.status_code = 400
+                                        return resp
+                        else:
+                            index = already_uploaded_files.index(secure_filename(file.filename))
+                            soundFile = current_uploaded_files[index]
                 # else:
                 #     resp = jsonify({'message' : "No file in the request"})
                 #     resp.status_code = 400
@@ -207,18 +220,26 @@ def create_route():
                 # check if audio was given
                 if len(files) > 0:
                     for file in files:
-                        if secure_filename(file.filename) == secure_filename(end['soundFile']):
-                            # check if file is audio
-                            if audio_file(secure_filename(file.filename)):
-                                filepath = upload_file(file)
-                                soundFile = filepath
-                                current_uploaded_files.append(soundFile)
-
-                            if soundFile == "no-upload":
-                                delete_current_uploaded_files(current_uploaded_files)
-                                resp = jsonify({'message' : 'No file selected for uploading'})
-                                resp.status_code = 400
-                                return resp
+                        if secure_filename(file.filename) not in already_uploaded_files:
+                            try:
+                                file_name = end['soundFile'].rsplit("/", 1)[1]
+                            except:
+                                file_name = end['soundFile'].rsplit("/", 1)[0]
+                            if secure_filename(file.filename) == secure_filename(file_name):
+                                # check if file is audio
+                                if audio_file(secure_filename(file.filename)):
+                                    filepath = upload_file(file)
+                                    soundFile = filepath
+                                    current_uploaded_files.append(soundFile)
+                                    already_uploaded_files.append(secure_filename(file.filename))
+                                    if soundFile == "no-upload":
+                                        delete_current_uploaded_files(current_uploaded_files)
+                                        resp = jsonify({'message' : 'No file selected for uploading'})
+                                        resp.status_code = 400
+                                        return resp
+                        else:
+                            index = already_uploaded_files.index(secure_filename(file.filename))
+                            soundFile = current_uploaded_files[index]
 
                 # else:
                 #     resp = jsonify({'message' : "No file in the request"})
