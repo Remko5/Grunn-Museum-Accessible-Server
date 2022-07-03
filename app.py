@@ -22,17 +22,17 @@ def all_routes():
 @app.route('/one', methods=['POST'])
 def one_route():
     name = request.form.get('name')
-    chars = app.config["NOT_ALLOWED_CHARS"]
+    #chars = app.config["NOT_ALLOWED_CHARS"]
     if name is None or len(name) == 0:
         resp = jsonify({'message' : 'No route name given'})
         resp.status_code = 400
         return resp
 
-    for char in name:
-        if char in chars:
-            resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
-            resp.status_code = 400
-            return resp
+    # for char in name:
+    #     if char in chars:
+    #         resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+    #         resp.status_code = 400
+    #         return resp
 
     Session = sessionmaker(bind=engine)
     sessionobj = Session()
@@ -52,17 +52,17 @@ def create_route():
     try:
         route = request.form
         name = route.get('name')
-        chars = app.config["NOT_ALLOWED_CHARS"]
+        #chars = app.config["NOT_ALLOWED_CHARS"]
         if name is None or len(name) == 0:
             resp = jsonify({'message' : 'No route name given'})
             resp.status_code = 400
             return resp
 
-        for char in name:
-            if char in chars:
-                resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
-                resp.status_code = 400
-                return resp
+        # for char in name:
+        #     if char in chars:
+        #         resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+        #         resp.status_code = 400
+        #         return resp
 
         # open database session
         Session = sessionmaker(bind=engine, autoflush=False)
@@ -75,12 +75,12 @@ def create_route():
             return resp
             
         description = route.get('description')
-        if description is not None and len(description) != 0:
-            for char in description:
-                if char in chars:
-                    resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
-                    resp.status_code = 400
-                    return resp
+        # if description is not None and len(description) != 0:
+        #     for char in description:
+        #         if char in chars:
+        #             resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+        #             resp.status_code = 400
+        #             return resp
 
         image = None
         files = request.files.getlist('file')
@@ -189,8 +189,9 @@ def create_route():
                                         resp.status_code = 400
                                         return resp
                         else:
-                            index = already_uploaded_files.index(secure_filename(file.filename))
-                            soundFile = current_uploaded_files[index]
+                            if audio_file(secure_filename(file.filename)):
+                                index = already_uploaded_files.index(secure_filename(file.filename))
+                                soundFile = current_uploaded_files[index]
                 # else:
                 #     resp = jsonify({'message' : "No file in the request"})
                 #     resp.status_code = 400
@@ -238,8 +239,9 @@ def create_route():
                                         resp.status_code = 400
                                         return resp
                         else:
-                            index = already_uploaded_files.index(secure_filename(file.filename))
-                            soundFile = current_uploaded_files[index]
+                            if audio_file(secure_filename(file.filename)):
+                                index = already_uploaded_files.index(secure_filename(file.filename))
+                                soundFile = current_uploaded_files[index]
 
                 # else:
                 #     resp = jsonify({'message' : "No file in the request"})
@@ -280,7 +282,7 @@ def update():
     name = route.get('name')
     new_name = route.get('new_name')
     new_description = route.get('new_description')
-    chars = app.config["NOT_ALLOWED_CHARS"]
+    #chars = app.config["NOT_ALLOWED_CHARS"]
     # check if the old name was given to get the record
     if name is None or len(name) == 0:
         resp = jsonify({'message' : 'No route name given'})
@@ -293,25 +295,25 @@ def update():
         resp.status_code = 200
         return resp
 
-    for char in name:
-        if char in chars:
-            resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
-            resp.status_code = 400
-            return resp
+    # for char in name:
+    #     if char in chars:
+    #         resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+    #         resp.status_code = 400
+    #         return resp
     
-    if new_name is not None and len(new_name) != 0:
-        for char in new_name:
-            if char in chars:
-                resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
-                resp.status_code = 400
-                return resp
+    # if new_name is not None and len(new_name) != 0:
+    #     for char in new_name:
+    #         if char in chars:
+    #             resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+    #             resp.status_code = 400
+    #             return resp
     
-    if new_description is not None and len(new_description) != 0:
-        for char in new_description:
-            if char in chars:
-                resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
-                resp.status_code = 400
-                return resp
+    # if new_description is not None and len(new_description) != 0:
+    #     for char in new_description:
+    #         if char in chars:
+    #             resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+    #             resp.status_code = 400
+    #             return resp
 
     Session = sessionmaker(bind=engine)
     sessionobj = Session()
@@ -381,15 +383,15 @@ def update():
 def delete():
     route = request.form
     name = route.get('name')
-    chars = app.config["NOT_ALLOWED_CHARS"]
+    #chars = app.config["NOT_ALLOWED_CHARS"]
     
     # check if name is given
     if name is not None and len(name) > 0:
-        for char in name:
-            if char in chars:
-                resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
-                resp.status_code = 400
-                return resp
+        # for char in name:
+        #     if char in chars:
+        #         resp = jsonify({'message' : 'These characters are not allowed: [' + chars + ']'})
+        #         resp.status_code = 400
+        #         return resp
 
         # try to get route and delete it
         try:

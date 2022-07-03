@@ -10,7 +10,7 @@ app.config["AUDIO_FOLDER"] = os.path.join(app.config["BASE_FOLDER"], "static/aud
 app.config["IMAGE_FOLDER"] = os.path.join(app.config["BASE_FOLDER"], "static/image")
 app.config["AUDIO_EXTENTIONS"] = ["wav", "mp3"]
 app.config["IMAGE_EXTENTIONS"] = ["jpg", "jpeg", "gif", "png"]
-app.config["NOT_ALLOWED_CHARS"] = re.escape(string.punctuation)
+#app.config["NOT_ALLOWED_CHARS"] = re.escape(string.punctuation)
 
 ma = Marshmallow(app)
 CORS(app)
