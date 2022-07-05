@@ -357,6 +357,8 @@ def update():
             resp.status_code = 400
             return resp
         
+        # keep old image for removal
+        old_image = update_route.image
         # update image link
         update_route.image = file
 
@@ -371,7 +373,7 @@ def update():
     
     # remove old image
     try:
-        os.remove(os.path.join(app.config['IMAGE_FOLDER'], update_route.image.rsplit('/static/image/', 1)[1]))
+        os.remove(os.path.join(app.config['IMAGE_FOLDER'], old_image.rsplit('/static/image/', 1)[1]))
     except:
         pass
     # return updated route
@@ -429,9 +431,9 @@ def upload_file(file):
     # check if a file is selected
     if not file and file.filename == '':
         return "no-upload"
-        resp = jsonify({'message' : 'No file selected for uploading'})
-        resp.status_code = 400
-        return resp
+        # resp = jsonify({'message' : 'No file selected for uploading'})
+        # resp.status_code = 400
+        # return resp
 
     # save audio file
     if audio_file(secure_filename(file.filename)):
@@ -439,9 +441,9 @@ def upload_file(file):
         filename = file_id + "." + file.filename.rsplit('.', 1)[1].lower()
         file.save(os.path.join(app.config['AUDIO_FOLDER'], filename))
         return "/static/audio/" + filename
-        resp = jsonify({'message' : '/static/audio/' + filename})
-        resp.status_code = 201
-        return resp
+        # resp = jsonify({'message' : '/static/audio/' + filename})
+        # resp.status_code = 201
+        # return resp
 
     # save image file
     elif image_file(secure_filename(file.filename)):
@@ -449,16 +451,16 @@ def upload_file(file):
         filename = file_id + "." + file.filename.rsplit('.', 1)[1].lower()
         file.save(os.path.join(app.config['IMAGE_FOLDER'], filename))
         return "/static/image/" + filename
-        resp = jsonify({'message' : '/static/image/' + filename})
-        resp.status_code = 201
-        return resp
+        # resp = jsonify({'message' : '/static/image/' + filename})
+        # resp.status_code = 201
+        # return resp
 
     # file not allowed
     else:
         return "not-allowed-extention"
-        resp = jsonify({'message' : 'Allowed file types are ' + str(app.config['AUDIO_EXTENTIONS']) + ' for audio and ' + str(app.config['IMAGE_EXTENTIONS']) + ' for images'})
-        resp.status_code = 400
-        return resp
+        # resp = jsonify({'message' : 'Allowed file types are ' + str(app.config['AUDIO_EXTENTIONS']) + ' for audio and ' + str(app.config['IMAGE_EXTENTIONS']) + ' for images'})
+        # resp.status_code = 400
+        # return resp
 
 def audio_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config["AUDIO_EXTENTIONS"]
