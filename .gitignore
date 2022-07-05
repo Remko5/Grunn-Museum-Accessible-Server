@@ -1,2 +1,2 @@
-mysql/data
-**/__pycache__
+__pycache__
+groninger_museum.db
